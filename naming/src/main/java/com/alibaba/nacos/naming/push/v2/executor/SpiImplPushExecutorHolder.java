@@ -44,6 +44,7 @@ public class SpiImplPushExecutorHolder {
     
     /**
      * Try to find an {@link PushExecutor} implement by SPI which interest to execute this push.
+     * 尝试通过SPI找到一个{@link PushExecutor}实现来执行这个推送。
      *
      * @param clientId   client id
      * @param subscriber subscriber infor

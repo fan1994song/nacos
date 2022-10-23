@@ -62,6 +62,7 @@ public class NacosConfigService implements ConfigService {
     ServerHttpAgent agent = null;
     
     /**
+     * 长轮训
      * long polling.
      */
     private final ClientWorker worker;
@@ -77,9 +78,11 @@ public class NacosConfigService implements ConfigService {
         this.configFilterChainManager = new ConfigFilterChainManager(properties);
         ServerListManager serverListManager = new ServerListManager(properties);
         serverListManager.start();
-        
+
+        // ClientWorker
         this.worker = new ClientWorker(this.configFilterChainManager, serverListManager, properties);
         // will be deleted in 2.0 later versions
+        // HttpAgent
         agent = new ServerHttpAgent(serverListManager);
         
     }
@@ -88,12 +91,29 @@ public class NacosConfigService implements ConfigService {
         namespace = ParamUtil.parseNamespace(properties);
         properties.put(PropertyKeyConst.NAMESPACE, namespace);
     }
-    
+
+    /**
+     * 发送普通的HTTP请求
+     * @param dataId    dataId
+     * @param group     group
+     * @param timeoutMs read timeout
+     * @return
+     * @throws NacosException
+     */
     @Override
     public String getConfig(String dataId, String group, long timeoutMs) throws NacosException {
         return getConfigInner(namespace, dataId, group, timeoutMs);
     }
-    
+
+    /**
+     * 发起长轮询和对dataId数据变更注册监听的操作
+     * @param dataId    dataId
+     * @param group     group
+     * @param timeoutMs read timeout
+     * @param listener  {@link Listener}
+     * @return
+     * @throws NacosException
+     */
     @Override
     public String getConfigAndSignListener(String dataId, String group, long timeoutMs, Listener listener)
             throws NacosException {
@@ -165,6 +185,10 @@ public class NacosConfigService implements ConfigService {
         // but is maintained by user.
         // This is designed for certain scenario like client emergency reboot,
         // changing config needed in the same time, while nacos server is down.
+        /**
+         * 如果存在，我们首先尝试使用本地故障转移内容。故障切换的配置内容不是客户端程序自动创建的，而是由用户维护的。
+         * 这是为某些场景设计的，如客户端紧急重新启动，在nacos服务器关闭时同时更改需要的配置
+         */
         String content = LocalConfigInfoProcessor.getFailover(worker.getAgentName(), dataId, group, tenant);
         if (content != null) {
             LOGGER.warn("[{}] [get-config] get failover ok, dataId={}, group={}, tenant={}, config={}",

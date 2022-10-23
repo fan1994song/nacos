@@ -40,6 +40,7 @@ import java.util.List;
 
 /**
  * Operation service for ephemeral clients and services.
+ * 对临时客户端和服务的操作服务
  *
  * @author xiweng.yy
  */
@@ -55,21 +56,27 @@ public class EphemeralClientOperationServiceImpl implements ClientOperationServi
     @Override
     public void registerInstance(Service service, Instance instance, String clientId) throws NacosException {
         NamingUtils.checkInstanceIsLegal(instance);
-    
+
+        // 注册服务实例，非临时节点抛出异常
         Service singleton = ServiceManager.getInstance().getSingleton(service);
         if (!singleton.isEphemeral()) {
             throw new NacosRuntimeException(NacosException.INVALID_PARAM,
                     String.format("Current service %s is persistent service, can't register ephemeral instance.",
                             singleton.getGroupedServiceName()));
         }
+        // 获取连接
         Client client = clientManager.getClient(clientId);
         if (!clientIsLegal(client, clientId)) {
             return;
         }
         InstancePublishInfo instanceInfo = getPublishInfo(instance);
+        // 添加服务实例，sync其他nacos阶段
         client.addServiceInstance(singleton, instanceInfo);
+
+        // 发布服务实例注册事件
         client.setLastUpdatedTime();
         NotifyCenter.publishEvent(new ClientOperationEvent.ClientRegisterServiceEvent(singleton, clientId));
+
         NotifyCenter
                 .publishEvent(new MetadataEvent.InstanceMetadataEvent(singleton, instanceInfo.getMetadataId(), false));
     }

@@ -56,6 +56,7 @@ public class EphemeralIpPortClientManager implements ClientManager {
     
     public EphemeralIpPortClientManager(DistroMapper distroMapper, SwitchDomain switchDomain) {
         this.distroMapper = distroMapper;
+        //过期客户端清理任务 5s 执行一次 ExpiredClientCleaner
         GlobalExecutor.scheduleExpiredClientCleaner(new ExpiredClientCleaner(this, switchDomain), 0,
                 Constants.DEFAULT_HEART_BEAT_INTERVAL, TimeUnit.MILLISECONDS);
         clientFactory = ClientFactoryHolder.getInstance().findClientFactory(ClientConstants.EPHEMERAL_IP_PORT);
@@ -127,7 +128,13 @@ public class EphemeralIpPortClientManager implements ClientManager {
         }
         return false;
     }
-    
+
+    /**
+     * 该类的逻辑定期检查是否是一个过期的客户端 过期的含义满足下面任一个
+     * 1、超时还没有发布服务 且 超时还没有订阅服务
+     * 2、超过了客户端的过期事件
+     *
+     */
     private static class ExpiredClientCleaner implements Runnable {
         
         private final EphemeralIpPortClientManager clientManager;

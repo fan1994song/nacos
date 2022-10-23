@@ -65,6 +65,7 @@ import java.util.Map;
 import static com.alibaba.nacos.naming.misc.UtilsAndCommons.DEFAULT_CLUSTER_NAME;
 
 /**
+ * 实例操作处理器，restful风格API
  * Instance operation controller for v2.x.
  *
  * @author hujun
@@ -80,18 +81,19 @@ public class InstanceControllerV2 {
     private InstanceOperatorClientImpl instanceServiceV2;
     
     /**
+     * 注册实例，服务实例发布上线
      * Register new instance.
      *
-     * @param namespaceId namespace id
-     * @param serviceName service name
-     * @param metadata    service metadata
-     * @param cluster     service cluster
+     * @param namespaceId namespace id 命名空间ID
+     * @param serviceName service name 服务名
+     * @param metadata    service metadata 服务元数据
+     * @param cluster     service cluster 集群
      * @param ip          instance ip
      * @param port        instance port
      * @param healthy     instance healthy
      * @param weight      instance weight
      * @param enabled     instance enabled
-     * @param ephemeral   instance ephemeral
+     * @param ephemeral   instance ephemeral 临时实例
      * @return 'ok' if success
      * @throws Exception any error during register
      */
@@ -104,16 +106,19 @@ public class InstanceControllerV2 {
             @RequestParam Integer port, @RequestParam(defaultValue = "true") Boolean healthy,
             @RequestParam(defaultValue = "1") Double weight, @RequestParam(defaultValue = "true") Boolean enabled,
             @RequestParam String metadata, @RequestParam Boolean ephemeral) throws Exception {
-        
+        // 名称、权重校验 group@@serviceName
         NamingUtils.checkServiceNameFormat(serviceName);
         checkWeight(weight);
         final Instance instance = InstanceBuilder.newBuilder().setServiceName(serviceName).setIp(ip)
                 .setClusterName(cluster).setPort(port).setHealthy(healthy).setWeight(weight).setEnabled(enabled)
                 .setMetadata(UtilsAndCommons.parseMetadata(metadata)).setEphemeral(ephemeral).build();
+        // 默认临时实例
         if (ephemeral == null) {
             instance.setEphemeral((switchDomain.isDefaultInstanceEphemeral()));
         }
+        // 注册实例（里面就是AP、CP的不同实现）
         instanceServiceV2.registerInstance(namespaceId, serviceName, instance);
+        // 发送推送，注册实例跟踪事件
         NotifyCenter.publishEvent(new RegisterInstanceTraceEvent(System.currentTimeMillis(), "",
                 false, namespaceId, NamingUtils.getGroupName(serviceName), NamingUtils.getServiceName(serviceName),
                 instance.getIp(), instance.getPort()));

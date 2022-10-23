@@ -26,6 +26,7 @@ import com.alibaba.nacos.core.distributed.distro.task.execute.DistroSyncDeleteTa
 
 /**
  * Distro delay task processor.
+ * AP 分发延迟任务处理器
  *
  * @author xiweng.yy
  */
@@ -40,7 +41,12 @@ public class DistroDelayTaskProcessor implements NacosTaskProcessor {
         this.distroTaskEngineHolder = distroTaskEngineHolder;
         this.distroComponentHolder = distroComponentHolder;
     }
-    
+
+    /**
+     * 删除、变更、新增 任务处理方法
+     * @param task     task.
+     * @return
+     */
     @Override
     public boolean process(NacosTask task) {
         if (!(task instanceof DistroDelayTask)) {

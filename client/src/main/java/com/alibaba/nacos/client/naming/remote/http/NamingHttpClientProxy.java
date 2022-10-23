@@ -139,13 +139,21 @@ public class NamingHttpClientProxy extends AbstractNamingClientProxy {
     public Class<? extends Event> subscribeType() {
         return ServerListChangedEvent.class;
     }
-    
+
+    /**
+     * 注册应用并设置心跳机制
+     * @param serviceName name of service
+     * @param groupName   group of service
+     * @param instance    instance to register
+     * @throws NacosException
+     */
     @Override
     public void registerService(String serviceName, String groupName, Instance instance) throws NacosException {
         
         NAMING_LOGGER.info("[REGISTER-SERVICE] {} registering service {} with instance: {}", namespaceId, serviceName,
                 instance);
         String groupedServiceName = NamingUtils.getGroupedName(serviceName, groupName);
+        // 临时实例，添加心跳检测请求，默认值是5秒请求一次
         if (instance.isEphemeral()) {
             BeatInfo beatInfo = beatReactor.buildBeatInfo(groupedServiceName, instance);
             beatReactor.addBeatInfo(groupedServiceName, beatInfo);
@@ -311,6 +319,7 @@ public class NamingHttpClientProxy extends AbstractNamingClientProxy {
         params.put(CommonParams.CLUSTER_NAME, beatInfo.getCluster());
         params.put(IP_PARAM, beatInfo.getIp());
         params.put(PORT_PARAM, String.valueOf(beatInfo.getPort()));
+        // 发送http请求续约
         String result = reqApi(UtilAndComs.nacosUrlBase + "/instance/beat", params, bodyMap, HttpMethod.PUT);
         return JacksonUtils.toObj(result);
     }

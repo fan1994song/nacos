@@ -248,7 +248,14 @@ public class NacosNamingService implements NamingService {
         }
         return list;
     }
-    
+
+    /**
+     * 客户端拉取服务实例信息
+     * @param serviceName name of service.
+     * @param healthy     a flag to indicate returning healthy or unhealthy instances
+     * @return
+     * @throws NacosException
+     */
     @Override
     public List<Instance> selectInstances(String serviceName, boolean healthy) throws NacosException {
         return selectInstances(serviceName, new ArrayList<>(), healthy);

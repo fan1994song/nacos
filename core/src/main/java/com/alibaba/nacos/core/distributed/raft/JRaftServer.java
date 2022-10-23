@@ -90,6 +90,10 @@ import java.util.function.BiConsumer;
 /**
  * JRaft server instance, away from Spring IOC management.
  *
+ * JRaft服务器实例，远离Spring IOC管理。
+ * <p> 为什么我们需要根据LogProcessor group()的值来创建一个raft组，即每个功能模块都有自己的状态机。
+ * 因为每个LogProcessor对应不同的功能模块，比如Nacos的命名模块和配置模块，所以这两个模块彼此独立，
+ * 互不影响。如果我们只有一个状态机，它等于所有功能模块的日志处理加载在一起。日志处理过程中出现异常的任何模块
  * <p>
  * Why do we need to create a raft group based on the value of LogProcessor group (), that is, each function module has
  * its own state machine. Because each LogProcessor corresponds to a different functional module, such as Nacos's naming
@@ -220,6 +224,7 @@ public class JRaftServer {
     
     synchronized void createMultiRaftGroup(Collection<RequestProcessor4CP> processors) {
         // There is no reason why the LogProcessor cannot be processed because of the synchronization
+        // 没有理由因为同步而无法处理LogProcessor
         if (!this.isStarted) {
             this.processors.addAll(processors);
             return;
@@ -232,7 +237,8 @@ public class JRaftServer {
             if (multiRaftGroup.containsKey(groupName)) {
                 throw new DuplicateRaftGroupException(groupName);
             }
-            
+
+            // 确保每个Raft Group都有自己的配置和NodeOptions
             // Ensure that each Raft Group has its own configuration and NodeOptions
             Configuration configuration = conf.copy();
             NodeOptions copy = nodeOptions.copy();
@@ -240,29 +246,34 @@ public class JRaftServer {
             
             // Here, the LogProcessor is passed into StateMachine, and when the StateMachine
             // triggers onApply, the onApply of the LogProcessor is actually called
+            // 在这里，LogProcessor被传递到StateMachine，当StateMachine //触发onApply时，LogProcessor的onApply实际上被调用
             NacosStateMachine machine = new NacosStateMachine(this, processor);
             
             copy.setFsm(machine);
             copy.setInitialConf(configuration);
             
             // Set snapshot interval, default 1800 seconds
+            // 设置快照间隔，默认1800秒
             int doSnapshotInterval = ConvertUtils.toInt(raftConfig.getVal(RaftSysConstants.RAFT_SNAPSHOT_INTERVAL_SECS),
                     RaftSysConstants.DEFAULT_RAFT_SNAPSHOT_INTERVAL_SECS);
             
             // If the business module does not implement a snapshot processor, cancel the snapshot
+            // 如果业务模块没有实现快照处理器，则取消快照
             doSnapshotInterval = CollectionUtils.isEmpty(processor.loadSnapshotOperate()) ? 0 : doSnapshotInterval;
             
             copy.setSnapshotIntervalSecs(doSnapshotInterval);
             Loggers.RAFT.info("create raft group : {}", groupName);
             RaftGroupService raftGroupService = new RaftGroupService(groupName, localPeerId, copy, rpcServer, true);
-    
+
+            // 因为BaseRpcServer之前已经启动过，所以不允许在这里再次启动
             // Because BaseRpcServer has been started before, it is not allowed to start again here
             Node node = raftGroupService.start(false);
             machine.setNode(node);
             RouteTable.getInstance().updateConfiguration(groupName, configuration);
             
             RaftExecutor.executeByCommon(() -> registerSelfToCluster(groupName, localPeerId, configuration));
-            
+
+            // 为该group打开leader自动刷新
             // Turn on the leader auto refresh for this group
             Random random = new Random();
             long period = nodeOptions.getElectionTimeoutMs() + random.nextInt(5 * 1000);
@@ -325,14 +336,17 @@ public class JRaftServer {
             future.completeExceptionally(new IllegalArgumentException("No corresponding Raft Group found : " + group));
             return future;
         }
-        
+
+        // 故障转移闭包实现
         FailoverClosureImpl closure = new FailoverClosureImpl(future);
         
         final Node node = tuple.node;
         if (node.isLeader()) {
+            // Leader节点直接处理此请求
             // The leader node directly applies this request
             applyOperation(node, data, closure);
         } else {
+            // 从节点，转发给Leader处理请求
             // Forward to Leader for request processing
             invokeToLeader(group, data, rpcRequestTimeoutMs, closure);
         }
@@ -341,6 +355,7 @@ public class JRaftServer {
     
     /**
      * Add yourself to the Raft cluster
+     * 将自己添加到Raft集群
      *
      * @param groupId raft group
      * @param selfIp  local raft node address
@@ -402,7 +417,8 @@ public class JRaftServer {
             closure.setResponse(nacosStatus.getResponse());
             closure.run(nacosStatus);
         }));
-        
+
+        // 在任务数据的头部添加请求类型字段
         // add request type field at the head of task data.
         byte[] requestTypeFieldBytes = new byte[2];
         requestTypeFieldBytes[0] = ProtoMessageUtil.REQUEST_TYPE_FIELD_TAG;
@@ -453,6 +469,7 @@ public class JRaftServer {
     
     boolean peerChange(JRaftMaintainService maintainService, Set<String> newPeers) {
         // This is only dealing with node deletion, the Raft protocol, where the node adds itself to the cluster when it starts up
+        // 这只处理节点删除，即Raft协议，节点在启动时将自己添加到集群中
         Set<String> oldPeers = new HashSet<>(this.raftConfig.getMembers());
         this.raftConfig.setMembers(localPeerId.toString(), newPeers);
         oldPeers.removeAll(newPeers);

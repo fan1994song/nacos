@@ -98,11 +98,15 @@ public class InstanceOperatorClientImpl implements InstanceOperator {
     @Override
     public void registerInstance(String namespaceId, String serviceName, Instance instance) throws NacosException {
         NamingUtils.checkInstanceIsLegal(instance);
-        
+
+        // 建立连接
         boolean ephemeral = instance.isEphemeral();
         String clientId = IpPortBasedClient.getClientId(instance.toInetAddr(), ephemeral);
         createIpPortClientIfAbsent(clientId);
+
+        // group@@serviceName
         Service service = getService(namespaceId, serviceName, ephemeral);
+        // 注册实例（AP、CP两种）
         clientOperationService.registerInstance(service, instance, clientId);
     }
     
@@ -325,12 +329,14 @@ public class InstanceOperatorClientImpl implements InstanceOperator {
     }
     
     private void createIpPortClientIfAbsent(String clientId) {
+        // 构建当前服务器对该实例信息的TCP会话连接
         if (!clientManager.contains(clientId)) {
             clientManager.clientConnected(clientId, new ClientAttributes());
         }
     }
     
     private Service getService(String namespaceId, String serviceName, boolean ephemeral) {
+        // 获取group名称、service名称，返回一个当前服务组装的服务对象返回
         String groupName = NamingUtils.getGroupName(serviceName);
         String serviceNameNoGrouped = NamingUtils.getServiceName(serviceName);
         return Service.newService(namespaceId, groupName, serviceNameNoGrouped, ephemeral);

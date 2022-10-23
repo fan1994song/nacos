@@ -24,6 +24,7 @@ import com.alibaba.nacos.sys.env.EnvUtil;
 import java.util.Collections;
 
 /**
+ * 单机寻址
  * Member node addressing mode in stand-alone mode.
  *
  * @author <a href="mailto:liaochuntao@live.com">liaochuntao</a>
@@ -32,7 +33,9 @@ public class StandaloneMemberLookup extends AbstractMemberLookup {
     
     @Override
     public void doStart() {
+        // ip+端口
         String url = EnvUtil.getLocalAddress();
+        //
         afterLookup(MemberUtil.readServerConf(Collections.singletonList(url)));
     }
     

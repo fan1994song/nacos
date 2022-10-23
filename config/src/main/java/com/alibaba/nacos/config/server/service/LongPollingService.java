@@ -229,6 +229,7 @@ public class LongPollingService {
     
     /**
      * Add LongPollingClient.
+     * 添加 长轮训客户端
      *
      * @param req              HttpServletRequest.
      * @param rsp              HttpServletResponse.
@@ -237,21 +238,24 @@ public class LongPollingService {
      */
     public void addLongPollingClient(HttpServletRequest req, HttpServletResponse rsp, Map<String, String> clientMd5Map,
             int probeRequestSize) {
-        
+        // 长轮训超时时间30s
         String str = req.getHeader(LongPollingService.LONG_POLLING_HEADER);
         String noHangUpFlag = req.getHeader(LongPollingService.LONG_POLLING_NO_HANG_UP_HEADER);
         String appName = req.getHeader(RequestUtil.CLIENT_APPNAME_HEADER);
         String tag = req.getHeader("Vipserver-Tag");
         int delayTime = SwitchService.getSwitchInteger(SwitchService.FIXED_DELAY_TIME, 500);
-        
+
+        // 为LoadBalance添加延迟时间，一个响应将提前500毫秒返回，以避免客户端超时
         // Add delay time for LoadBalance, and one response is returned 500 ms in advance to avoid client timeout.
         long timeout = Math.max(10000, Long.parseLong(str) - delayTime);
         if (isFixedPolling()) {
             timeout = Math.max(10000, getFixedPollingInterval());
             // Do nothing but set fix polling timeout.
         } else {
+            // 对客户端提交上来的groupkey的MD5与服务端当前的MD5比对，
             long start = System.currentTimeMillis();
             List<String> changedGroups = MD5Util.compareMd5(req, rsp, clientMd5Map);
+            // 如md5值不同，则说明服务端的配置项发生过变更，直接将该groupkey放入changedGroupKeys集合并返回给客户端。
             if (changedGroups.size() > 0) {
                 generateResponse(req, rsp, changedGroups);
                 LogUtil.CLIENT_LOG.info("{}|{}|{}|{}|{}|{}|{}", System.currentTimeMillis() - start, "instant",
@@ -268,6 +272,7 @@ public class LongPollingService {
         String ip = RequestUtil.getRemoteIp(req);
         
         // Must be called by http thread, or send response.
+        // 必须由http线程调用，或发送响应
         final AsyncContext asyncContext = req.startAsync();
         
         // AsyncContext.setTimeout() is incorrect, Control by oneself
@@ -280,7 +285,10 @@ public class LongPollingService {
     public static boolean isSupportLongPolling(HttpServletRequest req) {
         return null != req.getHeader(LONG_POLLING_HEADER);
     }
-    
+
+    /**
+     * 长轮训中注册了数据变更的监听
+     */
     @SuppressWarnings("PMD.ThreadPoolCreationRule")
     public LongPollingService() {
         allSubs = new ConcurrentLinkedQueue<>();
@@ -327,6 +335,10 @@ public class LongPollingService {
         @Override
         public void run() {
             try {
+                /**
+                 * 这个队列中维护的是所有客户端的长轮询请求任务，从这些任务中找到包含当前发生变更的groupkey的
+                 * ClientLongPolling任务，以此实现数据更变推送给客户端，并从allSubs队列中剔除此长轮询任务。
+                 */
                 ConfigCacheService.getContentBetaMd5(groupKey);
                 for (Iterator<ClientLongPolling> iter = allSubs.iterator(); iter.hasNext(); ) {
                     ClientLongPolling clientSub = iter.next();
@@ -348,6 +360,7 @@ public class LongPollingService {
                                         RequestUtil
                                                 .getRemoteIp((HttpServletRequest) clientSub.asyncContext.getRequest()),
                                         "polling", clientSub.clientMd5Map.size(), clientSub.probeRequestSize, groupKey);
+                        // 通过future的complete模式还响应结果
                         clientSub.sendResponse(Arrays.asList(groupKey));
                     }
                 }
@@ -387,16 +400,20 @@ public class LongPollingService {
             MetricsMonitor.getLongPollingMonitor().set(allSubs.size());
         }
     }
-    
+
+    /**
+     * 服务端处理长轮训的操作
+     */
     class ClientLongPolling implements Runnable {
         
         @Override
         public void run() {
             asyncTimeoutFuture = ConfigExecutor.scheduleLongPolling(() -> {
                 try {
+                    // 设置ip的还是时间
                     getRetainIps().put(ClientLongPolling.this.ip, System.currentTimeMillis());
 
-                    // Delete subscriber's relations.
+                    // Delete subscriber's relations. 删除订阅者的关系
                     boolean removeFlag = allSubs.remove(ClientLongPolling.this);
 
                     if (removeFlag) {
@@ -405,9 +422,11 @@ public class LongPollingService {
                                     .info("{}|{}|{}|{}|{}|{}", (System.currentTimeMillis() - createTime), "fix",
                                             RequestUtil.getRemoteIp((HttpServletRequest) asyncContext.getRequest()),
                                             "polling", clientMd5Map.size(), probeRequestSize);
+                            // 对客户端提交上来的groupkey的MD5与服务端当前的MD5比对
                             List<String> changedGroups = MD5Util
                                     .compareMd5((HttpServletRequest) asyncContext.getRequest(),
                                             (HttpServletResponse) asyncContext.getResponse(), clientMd5Map);
+                            // 如md5值不同，则说明服务端的配置项发生过变更，直接将该groupkey放入changedGroupKeys集合并返回给客户端
                             if (changedGroups.size() > 0) {
                                 sendResponse(changedGroups);
                             } else {
@@ -428,12 +447,14 @@ public class LongPollingService {
                 }
 
             }, timeoutTime, TimeUnit.MILLISECONDS);
-            
+
+            // 保存所有正在被挂起的客户端长轮询请求任务，这个是客户端注册监听的过程
             allSubs.add(this);
         }
         
         void sendResponse(List<String> changedGroups) {
-            
+
+            // 取消超时任务，响应结果
             // Cancel time out task.
             if (null != asyncTimeoutFuture) {
                 asyncTimeoutFuture.cancel(false);

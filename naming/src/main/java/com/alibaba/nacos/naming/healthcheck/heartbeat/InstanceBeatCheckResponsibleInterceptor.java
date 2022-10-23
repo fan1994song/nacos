@@ -21,6 +21,7 @@ import com.alibaba.nacos.sys.utils.ApplicationUtils;
 
 /**
  * Instance responsibility check interceptor.
+ * 实例责任检查拦截器
  *
  * @author gengtuo.ygt
  * on 2021/3/24

@@ -37,6 +37,7 @@ import java.util.Optional;
 
 /**
  * Instance beat checker for unhealthy instances.
+ * 不健康实例的实例跳动检查器
  *
  * <p>Mark these instances healthy status {@code false} if beat time out.
  *
@@ -46,6 +47,7 @@ public class UnhealthyInstanceChecker implements InstanceBeatChecker {
     
     @Override
     public void doCheck(Client client, Service service, HealthCheckInstancePublishInfo instance) {
+        // 健康，但是心跳时间间隔超过15秒，设置为不健康状态
         if (instance.isHealthy() && isUnhealthy(service, instance)) {
             changeHealthyStatus(client, service, instance);
         }

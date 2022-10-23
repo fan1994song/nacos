@@ -49,6 +49,7 @@ public class ExpiredInstanceChecker implements InstanceBeatChecker {
     @Override
     public void doCheck(Client client, Service service, HealthCheckInstancePublishInfo instance) {
         boolean expireInstance = ApplicationUtils.getBean(GlobalConfig.class).isExpireInstance();
+        // 若达到30秒判断需要过期，执行删除临时实例操作
         if (expireInstance && isExpireInstance(service, instance)) {
             deleteIp(client, service, instance);
         }

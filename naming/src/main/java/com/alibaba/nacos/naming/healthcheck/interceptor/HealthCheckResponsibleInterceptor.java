@@ -22,6 +22,7 @@ import com.alibaba.nacos.sys.utils.ApplicationUtils;
 
 /**
  * Health check responsible interceptor.
+ * 运行状况检查负责的拦截器
  *
  * @author xiweng.yy
  */

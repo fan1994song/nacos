@@ -53,6 +53,7 @@ public class SecurityProxy implements Closeable {
     
     /**
      * Login all available ClientAuthService instance.
+     * 登录所有可用的ClientAuthService实例
      *
      * @param properties login identity information.
      */

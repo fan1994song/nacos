@@ -112,10 +112,12 @@ public class DistroClientDataProcessor extends SmartSubscriber implements Distro
     
     private void syncToAllServer(ClientEvent event) {
         Client client = event.getClient();
+        // 只有通过发行版进行临时数据同步，持久化客户端应该通过筏进行同步
         // Only ephemeral data sync by Distro, persist client should sync by raft.
         if (null == client || !client.isEphemeral() || !clientManager.isResponsibleClient(client)) {
             return;
         }
+        // 全量同步
         if (event instanceof ClientEvent.ClientDisconnectEvent) {
             DistroKey distroKey = new DistroKey(client.getClientId(), TYPE);
             distroProtocol.sync(distroKey, DataOperation.DELETE);

@@ -21,6 +21,7 @@ import com.alibaba.nacos.naming.misc.ClientConfig;
 
 /**
  * Nacos naming client based on tcp session.
+ * 基于tcp会话的Nacos命名客户端
  *
  * <p>The client is bind to the tcp session. When the tcp session disconnect, the client should be clean.
  *

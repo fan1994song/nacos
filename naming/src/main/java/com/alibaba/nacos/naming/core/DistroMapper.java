@@ -36,6 +36,7 @@ import java.util.List;
 
 /**
  * Distro mapper, judge which server response input service.
+ * 分发映射器，判断哪个服务器响应输入服务
  *
  * @author nkorange
  */
@@ -129,6 +130,7 @@ public class DistroMapper extends MemberChangeListener {
     public void onEvent(MembersChangeEvent event) {
         // Here, the node list must be sorted to ensure that all nacos-server's
         // node list is in the same order
+        // 在这里，必须对节点列表进行排序，以确保所有nacos -server的节点列表具有相同的顺序
         List<String> list = MemberUtil.simpleMembers(MemberUtil.selectTargetMembers(event.getMembers(),
                 member -> NodeState.UP.equals(member.getState()) || NodeState.SUSPICIOUS.equals(member.getState())));
         Collections.sort(list);

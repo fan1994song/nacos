@@ -113,6 +113,7 @@ public class NamingSubscriberServiceV2Impl extends SmartSubscriber implements Na
     @Override
     public void onEvent(Event event) {
         if (event instanceof ServiceEvent.ServiceChangedEvent) {
+            // 若服务变化，推送给多有的订阅者（这里的订阅者，应该是配置中心的机制，暂时不管）
             // If service changed, push to all subscribers.
             ServiceEvent.ServiceChangedEvent serviceChangedEvent = (ServiceEvent.ServiceChangedEvent) event;
             Service service = serviceChangedEvent.getService();

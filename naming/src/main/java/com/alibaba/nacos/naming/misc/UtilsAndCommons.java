@@ -144,7 +144,7 @@ public class UtilsAndCommons {
     
     /**
      * Parse meta data from string.
-     *
+     * 元数据转为map，元数据可以为json，可以是a=1,b=2的数据结构
      * @param metadata meta data string
      * @return meta data map
      * @throws NacosException nacos exception

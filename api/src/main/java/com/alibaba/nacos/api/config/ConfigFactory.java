@@ -38,6 +38,7 @@ public class ConfigFactory {
      */
     public static ConfigService createConfigService(Properties properties) throws NacosException {
         try {
+            // 通过反射调用了 NacosConfigService 的构造方法来创建 ConfigService
             Class<?> driverImplClass = Class.forName("com.alibaba.nacos.client.config.NacosConfigService");
             Constructor constructor = driverImplClass.getConstructor(Properties.class);
             ConfigService vendorImpl = (ConfigService) constructor.newInstance(properties);

@@ -80,7 +80,7 @@ public class ConfigServletInner {
     public String doPollingConfig(HttpServletRequest request, HttpServletResponse response,
             Map<String, String> clientMd5Map, int probeRequestSize) throws IOException {
         
-        // Long polling.
+        // Long polling. 此处处理长轮训
         if (LongPollingService.isSupportLongPolling(request)) {
             longPollingService.addLongPollingClient(request, response, clientMd5Map, probeRequestSize);
             return HttpServletResponse.SC_OK + "";

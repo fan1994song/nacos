@@ -94,20 +94,26 @@ public interface ClientOperationService {
     default InstancePublishInfo getPublishInfo(Instance instance) {
         InstancePublishInfo result = new InstancePublishInfo(instance.getIp(), instance.getPort());
         Map<String, Object> extendDatum = result.getExtendDatum();
+        // 将元数据放入extendDatum
         if (null != instance.getMetadata() && !instance.getMetadata().isEmpty()) {
             extendDatum.putAll(instance.getMetadata());
         }
+        // 实例ID
         if (StringUtils.isNotEmpty(instance.getInstanceId())) {
             extendDatum.put(Constants.CUSTOM_INSTANCE_ID, instance.getInstanceId());
         }
+        // 权重
         if (Constants.DEFAULT_INSTANCE_WEIGHT != instance.getWeight()) {
             extendDatum.put(Constants.PUBLISH_INSTANCE_WEIGHT, instance.getWeight());
         }
+        // 是否可用
         if (!instance.isEnabled()) {
             extendDatum.put(Constants.PUBLISH_INSTANCE_ENABLE, instance.isEnabled());
         }
+        // 集群名称
         String clusterName = StringUtils.isBlank(instance.getClusterName()) ? UtilsAndCommons.DEFAULT_CLUSTER_NAME
                 : instance.getClusterName();
+        // 实例是否健康
         result.setHealthy(instance.isHealthy());
         result.setCluster(clusterName);
         return result;

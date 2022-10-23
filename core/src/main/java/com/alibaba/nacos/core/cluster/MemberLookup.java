@@ -24,6 +24,7 @@ import java.util.Map;
 
 /**
  * Member node addressing mode.
+ * nacos成员节点寻址方式
  *
  * @author <a href="mailto:liaochuntao@live.com">liaochuntao</a>
  */

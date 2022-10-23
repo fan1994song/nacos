@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
+ * nacos成员节点变更的统一缓存管理抽象类实现
  * Addressable pattern base class.
  *
  * @author <a href="mailto:liaochuntao@live.com">liaochuntao</a>
@@ -36,7 +37,11 @@ public abstract class AbstractMemberLookup implements MemberLookup {
     public void injectMemberManager(ServerMemberManager memberManager) {
         this.memberManager = memberManager;
     }
-    
+
+    /**
+     * 成功变更，更新到成员管理缓存类中
+     * @param members {@link Collection}
+     */
     @Override
     public void afterLookup(Collection<Member> members) {
         this.memberManager.memberChange(members);

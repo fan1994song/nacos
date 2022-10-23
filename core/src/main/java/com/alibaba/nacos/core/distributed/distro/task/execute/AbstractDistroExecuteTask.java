@@ -50,7 +50,10 @@ public abstract class AbstractDistroExecuteTask extends AbstractExecuteTask {
     protected DistroComponentHolder getDistroComponentHolder() {
         return distroComponentHolder;
     }
-    
+
+    /**
+     * DistroExecuteTask的run()方法
+     */
     @Override
     public void run() {
         String type = getDistroKey().getResourceType();

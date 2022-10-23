@@ -41,7 +41,8 @@ public class DefaultInstanceIdGenerator implements IdGenerator {
         this.ip = ip;
         this.port = port;
     }
-    
+
+    // 默认实例唯一标识：IP+端口号+集群名+服务名
     @Override
     public String generateInstanceId() {
         return ip + ID_DELIMITER + port + ID_DELIMITER + clusterName + ID_DELIMITER + serviceName;

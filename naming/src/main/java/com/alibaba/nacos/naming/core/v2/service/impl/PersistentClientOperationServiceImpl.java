@@ -70,6 +70,7 @@ import java.util.zip.Checksum;
 /**
  * Operation service for persistent clients and services. only for v2 For persistent instances, clientId must be in the
  * format of host:port.
+ * 持久客户端和服务的操作服务。对于持久实例，clientId必须为host:port的*格式
  *
  * @author <a href="mailto:liaochuntao@live.com">liaochuntao</a>
  * @author xiweng.yy
@@ -97,12 +98,14 @@ public class PersistentClientOperationServiceImpl extends RequestProcessor4CP im
     
     @Override
     public void registerInstance(Service service, Instance instance, String clientId) {
+        // 临时实例直接异常
         Service singleton = ServiceManager.getInstance().getSingleton(service);
         if (singleton.isEphemeral()) {
             throw new NacosRuntimeException(NacosException.INVALID_PARAM,
                     String.format("Current service %s is ephemeral service, can't register persistent instance.",
                             singleton.getGroupedServiceName()));
         }
+
         final InstanceStoreRequest request = new InstanceStoreRequest();
         request.setService(service);
         request.setInstance(instance);

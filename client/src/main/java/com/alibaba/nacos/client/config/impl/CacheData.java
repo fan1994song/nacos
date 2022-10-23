@@ -107,6 +107,7 @@ public class CacheData {
     private volatile boolean isInitializing = true;
     
     /**
+     * 如果是缓存数据md5与服务器同步
      * if is cache data md5 sync with the server.
      */
     private volatile boolean isSyncWithServer = false;
@@ -272,7 +273,10 @@ public class CacheData {
     public String toString() {
         return "CacheData [" + dataId + ", " + group + "]";
     }
-    
+
+    /**
+     * cacheMap中dataId的CacheData对象内，MD5字段与注册的监听listener内的lastCallMd5值，不相同表示配置数据变更则触发safeNotifyListener方法，发送数据变更通知
+     */
     void checkListenerMd5() {
         for (ManagerListenerWrap wrap : listeners) {
             if (!md5.equals(wrap.lastCallMd5)) {
@@ -292,7 +296,17 @@ public class CacheData {
         }
         return true;
     }
-    
+
+    /**
+     * safeNotifyListener()方法单独起线程，向所有对dataId注册过监听的客户端推送变更后的数据内容
+     * @param dataId
+     * @param group
+     * @param content
+     * @param type
+     * @param md5
+     * @param encryptedDataKey
+     * @param listenerWrap
+     */
     private void safeNotifyListener(final String dataId, final String group, final String content, final String type,
             final String md5, final String encryptedDataKey, final ManagerListenerWrap listenerWrap) {
         final Listener listener = listenerWrap.listener;
@@ -322,9 +336,11 @@ public class CacheData {
                 cr.setGroup(group);
                 cr.setContent(content);
                 cr.setEncryptedDataKey(encryptedDataKey);
+                // filter拦截继续过滤
                 configFilterChainManager.doFilter(null, cr);
                 String contentTmp = cr.getContent();
                 listenerWrap.inNotifying = true;
+                // 回调注册Listener的receiveConfigInfo方法或者receiveConfigChange逻辑
                 listener.receiveConfigInfo(contentTmp);
                 // compare lastContent and content
                 if (listener instanceof AbstractConfigChangeListener) {
@@ -352,6 +368,7 @@ public class CacheData {
         
         final long startNotify = System.currentTimeMillis();
         try {
+           //  优先使用我们示例中注册提供的线程池执行job，如果没有设置使用默认线程池「INTERNAL_NOTIFIER」，默认5个线程
             if (null != listener.getExecutor()) {
                 listener.getExecutor().execute(job);
             } else {
@@ -391,6 +408,9 @@ public class CacheData {
     /**
      * 1.first add listener.default is false;need to check. 2.receive config change notify,set false;need to check.
      * 3.last listener is remove,set to false;need to check
+     * 1.首先添加listener.default为false;需要检查。
+     * 2.收到配置更改通知，设置为false;需要检查。
+     * 3。最后一个监听器被删除，设置为false;需要检查
      *
      * @return the flag if sync with server
      */

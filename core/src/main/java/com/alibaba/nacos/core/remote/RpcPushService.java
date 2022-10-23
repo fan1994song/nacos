@@ -30,6 +30,7 @@ import java.util.concurrent.Executor;
 
 /**
  * push response  to clients.
+ * 向客户端推送响应
  *
  * @author liuzunfei
  * @version $Id: PushService.java, v 0.1 2020年07月20日 1:12 PM liuzunfei Exp $
@@ -41,6 +42,7 @@ public class RpcPushService {
     private ConnectionManager connectionManager;
     
     /**
+     * 推送到客户端，无ACK机制
      * push response with no ack.
      *
      * @param connectionId    connectionId.

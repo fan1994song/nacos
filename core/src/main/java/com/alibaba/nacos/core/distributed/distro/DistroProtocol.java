@@ -96,6 +96,7 @@ public class DistroProtocol {
     
     /**
      * Start to sync by configured delay.
+     * 按配置的延迟开始同步
      *
      * @param distroKey distro key of sync data
      * @param action    the action of data operation
@@ -112,6 +113,7 @@ public class DistroProtocol {
      * @param delay     delay time for sync
      */
     public void sync(DistroKey distroKey, DataOperation action, long delay) {
+        // 同步到nacos其他节点
         for (Member each : memberManager.allMembersWithoutSelf()) {
             syncToTarget(distroKey, action, each.getAddress(), delay);
         }
@@ -129,6 +131,7 @@ public class DistroProtocol {
         DistroKey distroKeyWithTarget = new DistroKey(distroKey.getResourceKey(), distroKey.getResourceType(),
                 targetServer);
         DistroDelayTask distroDelayTask = new DistroDelayTask(distroKeyWithTarget, action, delay);
+        // 延迟任务执行引擎增加延迟任务
         distroTaskEngineHolder.getDelayTaskExecuteEngine().addTask(distroKeyWithTarget, distroDelayTask);
         if (Loggers.DISTRO.isDebugEnabled()) {
             Loggers.DISTRO.debug("[DISTRO-SCHEDULE] {} to {}", distroKey, targetServer);

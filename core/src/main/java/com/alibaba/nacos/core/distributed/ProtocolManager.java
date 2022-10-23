@@ -40,6 +40,8 @@ import java.util.Set;
 /**
  * Conformance protocol management, responsible for managing the lifecycle of conformance protocols in Nacos.
  *
+ * 一个是基于简化的 Raft 的 CP 一致性，一个是基于自研协议 Distro 的 AP 一致性。Raft 协议不必多言，基于 Leader 进行写入，其 CP 也并不是严格的，
+ * 只是能保证一半所见一致，以及数据的丢失概率较小。Distro 协议则是参考了内部 ConfigServer 和开源 Eureka， 在不借助第三方存储的情况下，实现基本大同小异
  * @author <a href="mailto:liaochuntao@live.com">liaochuntao</a>
  */
 @SuppressWarnings("all")

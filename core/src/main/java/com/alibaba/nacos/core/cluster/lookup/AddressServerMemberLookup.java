@@ -40,6 +40,7 @@ import static com.alibaba.nacos.common.constant.RequestUrlConstants.HTTP_PREFIX;
 
 /**
  * Cluster member addressing mode for the address server.
+ * 地址服务器寻址模式是 Nacos 官方推荐的一种集群成员节点信息管理，该模式利用了一个简易的 web 服务器，用于管理 cluster.conf 文件的内容信息
  *
  * @author <a href="mailto:liaochuntao@live.com">liaochuntao</a>
  */

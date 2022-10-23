@@ -52,12 +52,17 @@ public class PushExecuteTask extends AbstractExecuteTask {
         this.delayTaskEngine = delayTaskEngine;
         this.delayTask = delayTask;
     }
-    
+
+    /**
+     * 推送数据的方法
+     */
     @Override
     public void run() {
         try {
+            // 获取推送数据
             PushDataWrapper wrapper = generatePushData();
             ClientManager clientManager = delayTaskEngine.getClientManager();
+            // 遍历所有的订阅该服务的clientIdList
             for (String each : getTargetClientIds()) {
                 Client client = clientManager.getClient(each);
                 if (null == client) {
@@ -65,6 +70,7 @@ public class PushExecuteTask extends AbstractExecuteTask {
                     continue;
                 }
                 Subscriber subscriber = clientManager.getClient(each).getSubscriber(service);
+                // 默认是通过udp方式传输数据
                 delayTaskEngine.getPushExecutor().doPushWithCallback(each, subscriber, wrapper,
                         new ServicePushCallback(each, subscriber, wrapper.getOriginalData(), delayTask.isPushToAll()));
             }
@@ -73,13 +79,21 @@ public class PushExecuteTask extends AbstractExecuteTask {
             delayTaskEngine.addTask(service, new PushDelayTask(service, 1000L));
         }
     }
-    
+
+    /**
+     * 组装服务信息、服务元数据
+     * @return
+     */
     private PushDataWrapper generatePushData() {
         ServiceInfo serviceInfo = delayTaskEngine.getServiceStorage().getPushData(service);
         ServiceMetadata serviceMetadata = delayTaskEngine.getMetadataManager().getServiceMetadata(service).orElse(null);
         return new PushDataWrapper(serviceMetadata, serviceInfo);
     }
-    
+
+    /**
+     * 获取所有订阅了该实例的信息
+     * @return
+     */
     private Collection<String> getTargetClientIds() {
         return delayTask.isPushToAll() ? delayTaskEngine.getIndexesManager().getAllClientsSubscribeService(service)
                 : delayTask.getTargetClients();

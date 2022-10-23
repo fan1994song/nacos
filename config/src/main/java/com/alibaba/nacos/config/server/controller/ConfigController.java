@@ -88,6 +88,7 @@ import java.util.stream.Collectors;
 
 /**
  * Special controller for soft load client to publish data.
+ * 专用控制器用于软负载客户端发布数据
  *
  * @author leiwen
  */
@@ -186,6 +187,7 @@ public class ConfigController {
                 ConfigChangePublisher.notifyConfigChange(
                         new ConfigDataChangeEvent(false, dataId, group, tenant, time.getTime()));
             } else {
+                // 持久化后，发布通知事件
                 persistService.insertOrUpdateTag(configInfo, tag, srcIp, srcUser, time, false);
                 ConfigChangePublisher.notifyConfigChange(
                         new ConfigDataChangeEvent(false, dataId, group, tenant, tag, time.getTime()));
@@ -330,6 +332,7 @@ public class ConfigController {
     }
     
     /**
+     * 服务端处理长轮询的接口
      * The client listens for configuration changes.
      */
     @PostMapping("/listener")
@@ -352,7 +355,8 @@ public class ConfigController {
         } catch (Throwable e) {
             throw new IllegalArgumentException("invalid probeModify");
         }
-        
+
+        // 处理长轮训
         // do long-polling
         inner.doPollingConfig(request, response, clientMd5Map, probeModify.length());
     }

@@ -59,7 +59,7 @@ import java.util.Optional;
 
 /**
  * Service operation controller.
- *
+ * 服务操作控制器
  * @author nkorange
  */
 @Beta
@@ -77,6 +77,7 @@ public class ServiceControllerV2 {
     }
     
     /**
+     * 创建一个新的服务实例，持久化实例
      * Create a new service. This API will create a persistence service.
      *
      * @param namespaceId      namespace id

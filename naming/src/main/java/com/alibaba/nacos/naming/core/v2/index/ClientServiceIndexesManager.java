@@ -117,12 +117,16 @@ public class ClientServiceIndexesManager extends SmartSubscriber {
     private void handleClientOperation(ClientOperationEvent event) {
         Service service = event.getService();
         String clientId = event.getClientId();
+        // 注册事件
         if (event instanceof ClientOperationEvent.ClientRegisterServiceEvent) {
             addPublisherIndexes(service, clientId);
+            //注销服务
         } else if (event instanceof ClientOperationEvent.ClientDeregisterServiceEvent) {
             removePublisherIndexes(service, clientId);
+            // 订阅服务
         } else if (event instanceof ClientOperationEvent.ClientSubscribeServiceEvent) {
             addSubscriberIndexes(service, clientId);
+            // 移除订阅服务
         } else if (event instanceof ClientOperationEvent.ClientUnsubscribeServiceEvent) {
             removeSubscriberIndexes(service, clientId);
         }

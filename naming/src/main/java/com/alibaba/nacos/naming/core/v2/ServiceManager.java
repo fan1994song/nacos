@@ -52,13 +52,16 @@ public class ServiceManager {
     
     /**
      * Get singleton service. Put to manager if no singleton.
+     * 得到单服务。如果没有单例，记录缓存实例信息
      *
      * @param service new service
      * @return if service is exist, return exist service, otherwise return new service
      */
     public Service getSingleton(Service service) {
+        // 单例数据缓存
         singletonRepository.putIfAbsent(service, service);
         Service result = singletonRepository.get(service);
+        // namespace -> 服务信息的map缓存
         namespaceSingletonMaps.computeIfAbsent(result.getNamespace(), (namespace) -> new ConcurrentHashSet<>());
         namespaceSingletonMaps.get(result.getNamespace()).add(result);
         return result;

@@ -101,6 +101,7 @@ public class ServerMemberManager implements ApplicationListener<WebServerInitial
     
     /**
      * Cluster node list.
+     * nacos集群节点列表
      */
     private volatile ConcurrentSkipListMap<String, Member> serverList;
     
@@ -131,6 +132,7 @@ public class ServerMemberManager implements ApplicationListener<WebServerInitial
     
     /**
      * here is always the node information of the "UP" state.
+     * 这里总是“UP”状态的节点信息。
      */
     private volatile Set<String> memberAddressInfos = new ConcurrentHashSet<>();
     
@@ -199,12 +201,14 @@ public class ServerMemberManager implements ApplicationListener<WebServerInitial
     
     private void registerClusterEvent() {
         // Register node change events
+        // 注册节点更改事件
         NotifyCenter.registerToPublisher(MembersChangeEvent.class,
                 EnvUtil.getProperty(MEMBER_CHANGE_EVENT_QUEUE_SIZE_PROPERTY, Integer.class,
                         DEFAULT_MEMBER_CHANGE_EVENT_QUEUE_SIZE));
         
         // The address information of this node needs to be dynamically modified
         // when registering the IP change of this node
+        // 注册该节点的IP变更时，需要动态修改该节点的地址信息
         NotifyCenter.registerSubscriber(new Subscriber<InetUtils.IPChangeEvent>() {
             @Override
             public void onEvent(InetUtils.IPChangeEvent event) {
@@ -337,16 +341,23 @@ public class ServerMemberManager implements ApplicationListener<WebServerInitial
         members.remove(self);
         return members;
     }
-    
+
+    /**
+     * 成员变更，sync防并发
+     * @param members
+     * @return
+     */
     synchronized boolean memberChange(Collection<Member> members) {
-        
+
         if (members == null || members.isEmpty()) {
             return false;
         }
-        
+
+        // 是否包含本机ip信息
         boolean isContainSelfIp = members.stream()
                 .anyMatch(ipPortTmp -> Objects.equals(localAddress, ipPortTmp.getAddress()));
-        
+
+        // 若不包含，设置到参数重
         if (isContainSelfIp) {
             isInIpList = true;
         } else {
@@ -359,13 +370,19 @@ public class ServerMemberManager implements ApplicationListener<WebServerInitial
         // must have changed; if the number of clusters is the same, then compare whether
         // there is a difference; if there is a difference, then the cluster node changes
         // are involved and all recipients need to be notified of the node change event
-        
+
+        /**
+         * 如果新老集群数量不一致，说明集群信息发生了变化;如果集群数量相同，则比较是否有差异;
+         * 如果存在差异，则涉及到集群节点更改，需要将节点更改事件通知所有收件人
+         */
+        // 数据量不一样,认为是改变了
         boolean hasChange = members.size() != serverList.size();
         ConcurrentSkipListMap<String, Member> tmpMap = new ConcurrentSkipListMap<>();
         Set<String> tmpAddressInfo = new ConcurrentHashSet<>();
         for (Member member : members) {
             final String address = member.getAddress();
-            
+
+            // 数据在缓存中不存在，也是改变了
             Member existMember = serverList.get(address);
             if (existMember == null) {
                 hasChange = true;
@@ -388,8 +405,14 @@ public class ServerMemberManager implements ApplicationListener<WebServerInitial
         // Persist the current cluster node information to cluster.conf
         // <important> need to put the event publication into a synchronized block to ensure
         // that the event publication is sequential
+
+        /**
+         * 将当前集群节点信息持久化到cluster.conf
+         * <重要>需要将事件发布放到同步块中，以确保事件发布是连续的
+         */
         if (hasChange) {
             Loggers.CLUSTER.warn("[serverlist] updated to : {}", finalMembers);
+            // 本机持久化
             MemberUtil.syncToFile(finalMembers);
             Event event = MembersChangeEvent.builder().members(finalMembers).build();
             NotifyCenter.publishEvent(event);

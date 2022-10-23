@@ -102,10 +102,16 @@ public class ServiceStorage {
         result.setCacheMillis(switchDomain.getDefaultPushCacheMillis());
         return result;
     }
-    
+
+    /**
+     * 获取该服务的缓存集群
+     * @param service
+     * @return
+     */
     private List<Instance> getAllInstancesFromIndex(Service service) {
         Set<Instance> result = new HashSet<>();
         Set<String> clusters = new HashSet<>();
+        // 获取可以发布该服务的所有发布者
         for (String each : serviceIndexesManager.getAllClientsRegisteredService(service)) {
             Optional<InstancePublishInfo> instancePublishInfo = getInstanceInfo(each, service);
             if (instancePublishInfo.isPresent()) {

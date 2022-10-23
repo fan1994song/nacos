@@ -178,6 +178,7 @@ public class JRaftProtocol extends AbstractConsistencyProtocol<RaftConfig, Reque
     public Response write(WriteRequest request) throws Exception {
         CompletableFuture<Response> future = writeAsync(request);
         // Here you wait for 10 seconds, as long as possible, for the request to complete
+        // 写入最久等十秒
         return future.get(10_000L, TimeUnit.MILLISECONDS);
     }
     

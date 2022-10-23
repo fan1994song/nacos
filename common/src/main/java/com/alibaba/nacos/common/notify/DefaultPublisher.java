@@ -167,6 +167,7 @@ public class DefaultPublisher extends Thread implements EventPublisher {
     
     /**
      * Receive and notifySubscriber to process the event.
+     * 接收并通知订阅服务器以处理事件
      *
      * @param event {@link Event}.
      */
@@ -185,6 +186,7 @@ public class DefaultPublisher extends Thread implements EventPublisher {
             }
             
             // Whether to ignore expiration events
+            // 是否忽略过期事件
             if (subscriber.ignoreExpireEvent() && lastEventSequence > currentEventSequence) {
                 LOGGER.debug("[NotifyCenter] the {} is unacceptable to this subscriber, because had expire",
                         event.getClass());
@@ -193,6 +195,7 @@ public class DefaultPublisher extends Thread implements EventPublisher {
             
             // Because unifying smartSubscriber and subscriber, so here need to think of compatibility.
             // Remove original judge part of codes.
+            // 因为统一了smartSubscriber和subscriber，所以这里需要考虑兼容性。删除代码的原始判断部分
             notifySubscriber(subscriber, event);
         }
     }

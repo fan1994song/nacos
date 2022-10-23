@@ -64,6 +64,7 @@ public abstract class AbstractNamingInterceptorChain<T extends Interceptable>
                 return;
             }
         }
+        // 通过拦截
         object.passIntercept();
     }
 }

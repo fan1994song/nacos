@@ -89,6 +89,7 @@ import static com.alibaba.nacos.api.common.Constants.ENCODE;
 
 /**
  * Long polling.
+ * 长轮训
  *
  * @author Nacos
  */
@@ -189,8 +190,10 @@ public class ClientWorker implements Closeable {
             List<? extends Listener> listeners) throws NacosException {
         group = blank2defaultGroup(group);
         String tenant = agent.getTenant();
+        // 1、获取dataId对应的CacheData，如没有则向服务端发起长轮询请求获取配置
         CacheData cache = addCacheDataIfAbsent(dataId, group, tenant);
         synchronized (cache) {
+            // 2、注册对dataId的数据变更监听
             cache.setEncryptedDataKey(encryptedDataKey);
             cache.setContent(content);
             for (Listener listener : listeners) {
@@ -343,25 +346,31 @@ public class ClientWorker implements Closeable {
      * @return cache data
      */
     public CacheData addCacheDataIfAbsent(String dataId, String group, String tenant) throws NacosException {
+        // 从缓存中获取
         CacheData cache = getCache(dataId, group, tenant);
         if (null != cache) {
             return cache;
         }
+        // 构造缓存key以+连接，test+DEFAULT_GROUP
         String key = GroupKey.getKeyTenant(dataId, group, tenant);
         synchronized (cacheMap) {
             CacheData cacheFromMap = getCache(dataId, group, tenant);
             // multiple listeners on the same dataid+group and race condition,so
             // double check again
             // other listener thread beat me to set to cacheMap
+            // 再检查一遍，缓存正在初始化,双check
             if (null != cacheFromMap) {
                 cache = cacheFromMap;
                 // reset so that server not hang this check
                 cache.setInitializing(true);
             } else {
+                // 若不存在该cache，发起请求获取数据
                 cache = new CacheData(configFilterChainManager, agent.getName(), dataId, group, tenant);
+                // 初始值taskId=0，注意此处每3000个CacheData共用一个taskId
                 int taskId = cacheMap.get().size() / (int) ParamUtil.getPerTaskConfigSize();
                 cache.setTaskId(taskId);
                 // fix issue # 1317
+                // 默认false
                 if (enableRemoteSyncConfig) {
                     ConfigResponse response = getServerConfig(dataId, group, tenant, 3000L, false);
                     cache.setEncryptedDataKey(response.getEncryptedDataKey());
@@ -407,11 +416,15 @@ public class ClientWorker implements Closeable {
     public ClientWorker(final ConfigFilterChainManager configFilterChainManager, ServerListManager serverListManager,
             final Properties properties) throws NacosException {
         this.configFilterChainManager = configFilterChainManager;
-        
+
+        // 初始化超时时间、重试时间等
         init(properties);
-        
+
+        // gRPC config agent初始化
         agent = new ConfigRpcTransportClient(properties, serverListManager);
+        // 通过核数，计算出适当的线程数
         int count = ThreadUtils.getSuitableThreadCount(THREAD_MULTIPLE);
+        // 调度线程池
         ScheduledExecutorService executorService = Executors
                 .newScheduledThreadPool(Math.max(count, MIN_THREAD_NUM), r -> {
                     Thread t = new Thread(r);
@@ -420,6 +433,7 @@ public class ClientWorker implements Closeable {
                     return t;
                 });
         agent.setExecutor(executorService);
+        // gRPC agent启动
         agent.start();
         
     }
@@ -433,6 +447,7 @@ public class ClientWorker implements Closeable {
     
     private void refreshContentAndCheck(CacheData cacheData, boolean notify) {
         try {
+            // 向server发起ConfigQueryRequest
             ConfigResponse response = getServerConfig(cacheData.dataId, cacheData.group, cacheData.tenant, 3000L,
                     notify);
             cacheData.setEncryptedDataKey(response.getEncryptedDataKey());
@@ -445,6 +460,7 @@ public class ClientWorker implements Closeable {
                         agent.getName(), cacheData.dataId, cacheData.group, cacheData.tenant, cacheData.getMd5(),
                         ContentUtils.truncateContent(response.getContent()), response.getConfigType());
             }
+            // cacheMap中dataId的CacheData对象内，MD5字段与注册的监听listener内的lastCallMd5值，不相同表示配置数据变更则触发safeNotifyListener方法，发送数据变更通知
             cacheData.checkListenerMd5();
         } catch (Exception e) {
             LOGGER.error("refresh content and check md5 fail ,dataId={},group={},tenant={} ", cacheData.dataId,
@@ -688,9 +704,11 @@ public class ClientWorker implements Closeable {
         
         @Override
         public void startInternal() {
+            // 线程会一直运行，从BlockingQueue中获取元素。队里不为空，获取后立即执行executeConfigListen()；队列为空等待5秒后执行
             executor.schedule(() -> {
                 while (!executor.isShutdown() && !executor.isTerminated()) {
                     try {
+                        // 最久等待5秒
                         listenExecutebell.poll(5L, TimeUnit.SECONDS);
                         if (executor.isShutdown() || executor.isTerminated()) {
                             continue;
@@ -713,26 +731,35 @@ public class ClientWorker implements Closeable {
         public void notifyListenConfig() {
             listenExecutebell.offer(bellItem);
         }
-        
+
+        /**
+         * 长轮询拉取配置
+         */
         @Override
         public void executeConfigListen() {
             
             Map<String, List<CacheData>> listenCachesMap = new HashMap<>(16);
             Map<String, List<CacheData>> removeListenCachesMap = new HashMap<>(16);
             long now = System.currentTimeMillis();
+            // 上次全同步是否超过5分钟
             boolean needAllSync = now - lastAllSyncTime >= ALL_SYNC_INTERNAL;
             for (CacheData cache : cacheMap.get().values()) {
                 
                 synchronized (cache) {
-                    
+
+                    // 如果本缓存已经和服务端同步 && 不需要全量同步，就跳过处理
                     //check local listeners consistent.
                     if (cache.isSyncWithServer()) {
+                        // cacheMap中dataId的CacheData对象内，MD5字段与注册的监听listener内的lastCallMd5值，不相同表示配置数据变更则触发safeNotifyListener方法，发送数据变更通知
+                        // 内容有变更通知Listener执行
                         cache.checkListenerMd5();
+                        // 不超过5分钟则不再全局校验
                         if (!needAllSync) {
                             continue;
                         }
                     }
-                    
+
+                    // 有添加Listeners
                     if (!CollectionUtils.isEmpty(cache.getListeners())) {
                         //get listen  config
                         if (!cache.isUseLocalConfigInfo()) {
@@ -745,7 +772,7 @@ public class ClientWorker implements Closeable {
                             
                         }
                     } else if (CollectionUtils.isEmpty(cache.getListeners())) {
-                        
+                        // 没有添加Listeners
                         if (!cache.isUseLocalConfigInfo()) {
                             List<CacheData> cacheDatas = removeListenCachesMap.get(String.valueOf(cache.getTaskId()));
                             if (cacheDatas == null) {
@@ -761,7 +788,8 @@ public class ClientWorker implements Closeable {
             }
             
             boolean hasChangedKeys = false;
-            
+
+            // 有Listeners
             if (!listenCachesMap.isEmpty()) {
                 for (Map.Entry<String, List<CacheData>> entry : listenCachesMap.entrySet()) {
                     String taskId = entry.getKey();
@@ -776,13 +804,18 @@ public class ClientWorker implements Closeable {
                     ConfigBatchListenRequest configChangeListenRequest = buildConfigRequest(listenCaches);
                     configChangeListenRequest.setListen(true);
                     try {
+                        // 注解@10.1
+                        // 每个taskId构建rpcClient
                         RpcClient rpcClient = ensureRpcClient(taskId);
+                        // 注解@10.2
+                        // 向server发起configChangeListenRequest，server端由ConfigChangeBatchListenRequestHandler处理，还是比较md5
                         ConfigChangeBatchListenResponse configChangeBatchListenResponse = (ConfigChangeBatchListenResponse) requestProxy(
                                 rpcClient, configChangeListenRequest);
                         if (configChangeBatchListenResponse != null && configChangeBatchListenResponse.isSuccess()) {
                             
                             Set<String> changeKeys = new HashSet<>();
                             //handle changed keys,notify listener
+                            // 有变化的configContext
                             if (!CollectionUtils.isEmpty(configChangeBatchListenResponse.getChangedConfigs())) {
                                 hasChangedKeys = true;
                                 for (ConfigChangeBatchListenResponse.ConfigContext changeConfig : configChangeBatchListenResponse
@@ -792,12 +825,14 @@ public class ClientWorker implements Closeable {
                                                     changeConfig.getTenant());
                                     changeKeys.add(changeKey);
                                     boolean isInitializing = cacheMap.get().get(changeKey).isInitializing();
+                                    // 回调Listener,刷新content并校验
+                                    // 当server返回变更key列表时执行refreshContentAndCheck方法
                                     refreshContentAndCheck(changeKey, !isInitializing);
                                 }
                                 
                             }
                             
-                            //handler content configs
+                            //handler content configs 处理内容配置
                             for (CacheData cacheData : listenCaches) {
                                 String groupKey = GroupKey
                                         .getKeyTenant(cacheData.dataId, cacheData.group, cacheData.getTenant());
@@ -839,6 +874,7 @@ public class ClientWorker implements Closeable {
                     ConfigBatchListenRequest configChangeListenRequest = buildConfigRequest(removeListenCaches);
                     configChangeListenRequest.setListen(false);
                     try {
+                        // 向server发送Listener取消订阅请求ConfigBatchListenRequest#listen为false
                         RpcClient rpcClient = ensureRpcClient(taskId);
                         boolean removeSuccess = unListenConfigChange(rpcClient, configChangeListenRequest);
                         if (removeSuccess) {
@@ -867,6 +903,7 @@ public class ClientWorker implements Closeable {
                 lastAllSyncTime = now;
             }
             //If has changed keys,notify re sync md5.
+            // key有变化触发下一轮轮询
             if (hasChangedKeys) {
                 notifyListenConfig();
             }

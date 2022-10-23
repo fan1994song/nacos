@@ -40,7 +40,11 @@ public class DistroSyncChangeTask extends AbstractDistroExecuteTask {
     protected DataOperation getDataOperation() {
         return OPERATION;
     }
-    
+
+    /**
+     * 变更数据执行
+     * @return
+     */
     @Override
     protected boolean doExecute() {
         String type = getDistroKey().getResourceType();

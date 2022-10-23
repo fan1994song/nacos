@@ -129,7 +129,9 @@ public abstract class ConfigTransportClient {
      * base start client.
      */
     public void start() throws NacosException {
+        // 简单用户名和密码验证
         securityProxy.login(this.properties);
+        // 每五秒调度执行一次
         this.executor.scheduleWithFixedDelay(() -> securityProxy.login(properties), 0,
                 this.securityInfoRefreshIntervalMills, TimeUnit.MILLISECONDS);
         startInternal();

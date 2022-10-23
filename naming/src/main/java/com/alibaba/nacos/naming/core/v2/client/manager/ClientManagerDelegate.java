@@ -37,9 +37,11 @@ import java.util.HashSet;
 public class ClientManagerDelegate implements ClientManager {
     
     private final ConnectionBasedClientManager connectionBasedClientManager;
-    
+
+    // 临时节点客户端管理器
     private final EphemeralIpPortClientManager ephemeralIpPortClientManager;
-    
+
+    // 持久化节点客户端管理器
     private final PersistentIpPortClientManager persistentIpPortClientManager;
     
     public ClientManagerDelegate(ConnectionBasedClientManager connectionBasedClientManager,

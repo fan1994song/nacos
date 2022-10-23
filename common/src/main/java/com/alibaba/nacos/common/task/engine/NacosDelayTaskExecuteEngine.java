@@ -58,7 +58,14 @@ public class NacosDelayTaskExecuteEngine extends AbstractNacosTaskExecuteEngine<
     public NacosDelayTaskExecuteEngine(String name, int initCapacity, Logger logger) {
         this(name, initCapacity, logger, 100L);
     }
-    
+
+    /**
+     *
+     * @param name
+     * @param initCapacity
+     * @param logger
+     * @param processInterval 过程时间间隔
+     */
     public NacosDelayTaskExecuteEngine(String name, int initCapacity, Logger logger, long processInterval) {
         super(logger);
         tasks = new ConcurrentHashMap<>(initCapacity);
@@ -124,8 +131,10 @@ public class NacosDelayTaskExecuteEngine extends AbstractNacosTaskExecuteEngine<
     public void addTask(Object key, AbstractDelayTask newTask) {
         lock.lock();
         try {
+            // 放入任务中
             AbstractDelayTask existTask = tasks.get(key);
             if (null != existTask) {
+                // merge就是有些运行参数还是用旧的，没啥特别的
                 newTask.merge(existTask);
             }
             tasks.put(key, newTask);
@@ -150,6 +159,7 @@ public class NacosDelayTaskExecuteEngine extends AbstractNacosTaskExecuteEngine<
                 continue;
             }
             try {
+                // 如果进程失败，则读取任务
                 // ReAdd task if process failed
                 if (!processor.process(task)) {
                     retryFailedTask(taskKey, task);

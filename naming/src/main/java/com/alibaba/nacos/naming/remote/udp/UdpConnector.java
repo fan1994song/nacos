@@ -133,11 +133,13 @@ public class UdpConnector {
         @Override
         public void run() {
             try {
+                // UDP线程池去处理ACK
                 callbackMap.put(ackEntry.getKey(), callBack);
                 ackMap.put(ackEntry.getKey(), ackEntry);
                 Loggers.PUSH.info("send udp packet: " + ackEntry.getKey());
                 ackEntry.increaseRetryTime();
                 doSend(ackEntry.getOrigin());
+                // 10s后，如果ackMap中，还有ackentry.key, 就重试发送
                 GlobalExecutor.scheduleRetransmitter(new UdpRetrySender(ackEntry), Constants.ACK_TIMEOUT_NANOS,
                         TimeUnit.NANOSECONDS);
             } catch (Exception e) {

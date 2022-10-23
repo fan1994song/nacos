@@ -34,6 +34,8 @@ import java.util.Collection;
  * <p>The client is bind to the ip and port users registered. It's a abstract content to simulate the tcp session
  * client.
  *
+ * 基于ip和端口的Nacos命名客户端
+ * 客户端绑定已注册的ip和端口用户。它是模拟tcp会话*客户端的抽象内容
  * @author xiweng.yy
  */
 public class IpPortBasedClient extends AbstractClient {
@@ -103,7 +105,12 @@ public class IpPortBasedClient extends AbstractClient {
             healthCheckTaskV2.setCancelled(true);
         }
     }
-    
+
+    /**
+     * 转换为健康检查实例信息
+     * @param instancePublishInfo
+     * @return
+     */
     private HealthCheckInstancePublishInfo parseToHealthCheckInstance(InstancePublishInfo instancePublishInfo) {
         HealthCheckInstancePublishInfo result;
         if (instancePublishInfo instanceof HealthCheckInstancePublishInfo) {
@@ -126,10 +133,13 @@ public class IpPortBasedClient extends AbstractClient {
      * Init client.
      */
     public void init() {
+        // 是否是临时实例
         if (ephemeral) {
+            // 心跳检查
             beatCheckTask = new ClientBeatCheckTaskV2(this);
             HealthCheckReactor.scheduleCheck(beatCheckTask);
         } else {
+            //健康检查
             healthCheckTaskV2 = new HealthCheckTaskV2(this);
             HealthCheckReactor.scheduleCheck(healthCheckTaskV2);
         }

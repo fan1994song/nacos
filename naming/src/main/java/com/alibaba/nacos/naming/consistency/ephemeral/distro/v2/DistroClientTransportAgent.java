@@ -68,6 +68,7 @@ public class DistroClientTransportAgent implements DistroTransportAgent {
         if (isNoExistTarget(targetServer)) {
             return true;
         }
+        // 从nacosManager缓存中找到nacos服务器信息
         DistroDataRequest request = new DistroDataRequest(data, data.getType());
         Member member = memberManager.find(targetServer);
         if (checkTargetServerStatusUnhealthy(member)) {
@@ -77,6 +78,7 @@ public class DistroClientTransportAgent implements DistroTransportAgent {
             return false;
         }
         try {
+            // 发送同步请求
             Response response = clusterRpcClientProxy.sendRequest(member, request);
             return checkResponse(response);
         } catch (NacosException e) {
